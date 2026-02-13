@@ -1,12 +1,43 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import Header from '@/components/store/Header';
+import HeroBanner from '@/components/store/HeroBanner';
+import CategoryGrid from '@/components/store/CategoryGrid';
+import DealsSection from '@/components/store/DealsSection';
+import BundleSection from '@/components/store/BundleSection';
+import FeaturedProducts from '@/components/store/FeaturedProducts';
+import Footer from '@/components/store/Footer';
+import { flashDeals, monthlyDeals } from '@/data/products';
+
+const flashEnd = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+const monthlyEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <HeroBanner />
+      <CategoryGrid />
+
+      <DealsSection
+        title="Flash Deals"
+        subtitle="Hurry! These deals expire in 3 days"
+        endDate={flashEnd}
+        products={flashDeals}
+        variant="flash"
+        emoji="⚡"
+      />
+
+      <DealsSection
+        title="Monthly Specials"
+        subtitle="Great prices all month long"
+        endDate={monthlyEnd}
+        products={monthlyDeals}
+        variant="monthly"
+        emoji="🔥"
+      />
+
+      <BundleSection />
+      <FeaturedProducts />
+      <Footer />
     </div>
   );
 };
