@@ -1,6 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import heroBg from '@/assets/hero-banner.jpg';
 
 const HeroBanner = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0">
@@ -20,10 +23,10 @@ const HeroBanner = () => {
             200+ quality products with fast delivery nationwide. Enjoy flash deals, monthly specials & exclusive bundles — all in Ghana Cedis.
           </p>
           <div className="flex gap-3 animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            <button className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity text-sm">
+            <button onClick={() => navigate('/search')} className="bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-lg hover:opacity-90 transition-opacity text-sm">
               Shop Now
             </button>
-            <button className="bg-card/20 backdrop-blur text-card border border-card/30 font-semibold px-6 py-3 rounded-lg hover:bg-card/30 transition-colors text-sm">
+            <button onClick={() => navigate('/search?category=Flash+Deals')} className="bg-card/20 backdrop-blur text-card border border-card/30 font-semibold px-6 py-3 rounded-lg hover:bg-card/30 transition-colors text-sm">
               View Deals
             </button>
           </div>
