@@ -1,4 +1,5 @@
 import { Smartphone, Laptop, Shirt, Home, Sparkles, Zap, UtensilsCrossed, Dumbbell } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { categories } from '@/data/products';
 
 const iconMap: Record<string, React.ElementType> = {
@@ -6,6 +7,8 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 const CategoryGrid = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="container mx-auto px-4 py-10">
       <h2 className="font-heading text-2xl font-bold text-foreground mb-6">Shop by Category</h2>
@@ -15,6 +18,7 @@ const CategoryGrid = () => {
           return (
             <button
               key={cat.name}
+              onClick={() => navigate(`/search?category=${encodeURIComponent(cat.name)}`)}
               className="flex flex-col items-center gap-2 p-4 bg-card rounded-lg border border-border hover:border-primary hover:shadow-md transition-all duration-200 group"
               style={{ animationDelay: `${i * 0.05}s` }}
             >

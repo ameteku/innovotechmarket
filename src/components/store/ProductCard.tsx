@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, Star, Eye } from 'lucide-react';
 import { type Product, formatPrice } from '@/data/products';
+import { useCart } from '@/contexts/CartContext';
 
 interface ProductCardProps {
   product: Product;
@@ -24,6 +26,8 @@ const badgeLabels: Record<string, string> = {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const [imgIndex, setImgIndex] = useState(0);
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
   const discount = product.originalPrice
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
@@ -32,9 +36,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
     <div className="group bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col">
       {/* Image */}
       <div
-        className="relative aspect-square bg-muted overflow-hidden"
+        className="relative aspect-square bg-muted overflow-hidden cursor-pointer"
         onMouseEnter={() => setImgIndex(1)}
         onMouseLeave={() => setImgIndex(0)}
+        onClick={() => navigate(`/product/${product.id}`)}
       >
         <img
           src={product.images[imgIndex]}
@@ -57,7 +62,10 @@ const ProductCard = ({ product }: ProductCardProps) => {
             <span className="bg-card text-foreground text-sm font-semibold px-3 py-1 rounded">Out of Stock</span>
           </div>
         )}
-        <button className="absolute bottom-2 right-2 bg-card/90 backdrop-blur p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow">
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/product/${product.id}`); }}
+          className="absolute bottom-2 right-2 bg-card/90 backdrop-blur p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow"
+        >
           <Eye className="h-4 w-4 text-foreground" />
         </button>
       </div>
@@ -65,7 +73,12 @@ const ProductCard = ({ product }: ProductCardProps) => {
       {/* Info */}
       <div className="p-3 flex flex-col flex-1">
         <p className="text-xs text-muted-foreground mb-1">{product.category}</p>
-        <h3 className="font-medium text-sm text-card-foreground line-clamp-2 mb-2 flex-1">{product.name}</h3>
+        <h3
+          onClick={() => navigate(`/product/${product.id}`)}
+          className="font-medium text-sm text-card-foreground line-clamp-2 mb-2 flex-1 cursor-pointer hover:text-primary transition-colors"
+        >
+          {product.name}
+        </h3>
 
         {/* Rating */}
         <div className="flex items-center gap-1 mb-2">
@@ -97,6 +110,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
         )}
 
         <button
+          onClick={() => addToCart(product)}
           disabled={!product.inStock}
           className="w-full bg-primary text-primary-foreground text-sm font-medium py-2 rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-1.5 mt-auto"
         >
