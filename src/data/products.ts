@@ -422,8 +422,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 349,
     category: "Beauty & Care",
     images: [
-      "https://placehold.co/400x400/8b5e83/ffffff?text=Beauty+Box",
-      "https://placehold.co/400x400/a0728a/ffffff?text=Beauty+Box",
+      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&h=400&fit=crop",
     ],
     rating: 4.7,
     reviews: 134,
