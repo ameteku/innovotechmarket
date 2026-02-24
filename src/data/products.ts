@@ -507,8 +507,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 599,
     category: "Fashion & Clothing",
     images: [
-      "https://placehold.co/400x400/8B4513/ffffff?text=Fashion+Combo",
-      "https://placehold.co/400x400/A0522D/ffffff?text=Fashion+Combo",
+      "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop",
     ],
     rating: 4.4,
     reviews: 91,
