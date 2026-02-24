@@ -388,8 +388,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 1099,
     category: "Home & Kitchen",
     images: [
-      "https://placehold.co/400x400/2d6a4f/ffffff?text=Kitchen+Pack",
-      "https://placehold.co/400x400/40916c/ffffff?text=Kitchen+Pack",
+      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1585515320310-259814833e62?w=400&h=400&fit=crop",
     ],
     rating: 4.6,
     reviews: 89,
