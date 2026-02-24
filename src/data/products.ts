@@ -371,8 +371,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 5499,
     category: "Phones & Tablets",
     images: [
-      "https://placehold.co/400x400/1a1a2e/ffffff?text=Phone+Bundle",
-      "https://placehold.co/400x400/2d3250/ffffff?text=Phone+Bundle",
+      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=400&fit=crop",
     ],
     rating: 4.8,
     reviews: 156,
