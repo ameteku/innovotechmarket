@@ -490,8 +490,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 949,
     category: "Electronics",
     images: [
-      "https://placehold.co/400x400/023e8a/ffffff?text=Tech+Bundle",
-      "https://placehold.co/400x400/0353a4/ffffff?text=Tech+Bundle",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
     ],
     rating: 4.7,
     reviews: 167,
