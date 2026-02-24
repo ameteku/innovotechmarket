@@ -30,8 +30,7 @@ export const categories = [
 const flashEnd = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
 const monthlyEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-const catColors: Record<string, [string, string]> = {};
-categories.forEach(c => { catColors[c.name] = [c.color, c.accent]; });
+
 
 let _id = 0;
 const imgQuery = (name: string, cat: string) => {
