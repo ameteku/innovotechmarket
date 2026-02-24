@@ -473,8 +473,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 279,
     category: "Food & Beverages",
     images: [
-      "https://placehold.co/400x400/9b2226/ffffff?text=Food+Hamper",
-      "https://placehold.co/400x400/ae2012/ffffff?text=Food+Hamper",
+      "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=400&h=400&fit=crop",
     ],
     rating: 4.8,
     reviews: 245,
