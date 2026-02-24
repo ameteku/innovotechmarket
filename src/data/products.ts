@@ -456,8 +456,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 749,
     category: "Sports & Fitness",
     images: [
-      "https://placehold.co/400x400/005f73/ffffff?text=Fitness+Kit",
-      "https://placehold.co/400x400/0a9396/ffffff?text=Fitness+Kit",
+      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop",
     ],
     rating: 4.6,
     reviews: 112,
