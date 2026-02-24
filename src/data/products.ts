@@ -33,108 +33,191 @@ const monthlyEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
 
 let _id = 0;
-const imgQuery = (name: string, cat: string) => {
-  const q = encodeURIComponent(`${name} ${cat} product`);
-  return [
-    `https://images.unsplash.com/photo-placeholder?w=400&h=400&q=80&fit=crop&auto=format`,
-  ];
+
+// Keyword-to-image map: matches product names to relevant Unsplash photos
+const u = (id: string) => `https://images.unsplash.com/photo-${id}?w=400&h=400&fit=crop&auto=format`;
+
+const keywordImages: [RegExp, string[]][] = [
+  // Phones & Tablets
+  [/galaxy|samsung.*phone/i, [u("1610945265295-cb06c93b4e23"), u("1587817229766-08cff5b4b7c8")]],
+  [/iphone/i, [u("1592899677977-9c10ca588bbd"), u("1591337676887-a217a6970a8a")]],
+  [/tecno|infinix|spark|hot\s?\d/i, [u("1598327105666-5b89351aff97"), u("1574944985070-8f3ebc6b79d2")]],
+  [/xiaomi|redmi/i, [u("1585060544812-6b45742d762f"), u("1601784551446-20c9e07cdbdb")]],
+  [/ipad|tab\b/i, [u("1544244015-0df4b3ffc6b0"), u("1561154464-82e6f3f15d42")]],
+  [/pixel/i, [u("1598327105666-5b89351aff97"), u("1511707171634-5f897ff02aa9")]],
+  [/oppo|realme|vivo|oneplus|huawei|nokia/i, [u("1580910051074-3eb694886f4b"), u("1556656793-08538906a9f8")]],
+  [/flip|fold|phantom/i, [u("1610945265295-cb06c93b4e23"), u("1592899677977-9c10ca588bbd")]],
+
+  // Laptops
+  [/macbook/i, [u("1517336714731-489689fd1ca8"), u("1611186871348-b1ce696e52c9")]],
+  [/hp.*pavilion|hp.*probook|hp.*250|hp.*elitebook/i, [u("1496181133206-80ce9b88a853"), u("1525547719571-a2d4ac8945e2")]],
+  [/dell.*xps|dell.*inspiron|dell.*latitude/i, [u("1588872657578-7efd1f1555ed"), u("1593642702821-c8da6771f0c6")]],
+  [/lenovo.*ideapad|lenovo.*thinkpad|lenovo.*yoga/i, [u("1541807084-5c52b6b3adef"), u("1602080858428-57174f9431cf")]],
+  [/asus.*vivobook|asus.*zenbook|asus.*chromebook/i, [u("1496181133206-80ce9b88a853"), u("1593642702821-c8da6771f0c6")]],
+  [/nitro|rog|legion|gaming|victus|g15/i, [u("1593642702821-c8da6771f0c6"), u("1602080858428-57174f9431cf")]],
+  [/surface/i, [u("1611186871348-b1ce696e52c9"), u("1517336714731-489689fd1ca8")]],
+  [/acer.*swift|acer.*aspire/i, [u("1525547719571-a2d4ac8945e2"), u("1541807084-5c52b6b3adef")]],
+  [/all-in-one|ideacentre/i, [u("1527443224154-c4a3942d3acf"), u("1593642702821-c8da6771f0c6")]],
+
+  // Fashion
+  [/ankara|african.*print|dashiki|kente|kaba|batakari/i, [u("1590735213920-68192a487bc2"), u("1583391733981-8b530ba24120")]],
+  [/dress|maxi|jumpsuit/i, [u("1495385794356-15ebb6bf0941"), u("1496747611176-843222e1e57c")]],
+  [/shirt|polo|t-shirt|jersey|blazer/i, [u("1489987707025-afc232f7ea0f"), u("1523381210434-271e8be1f52b")]],
+  [/jeans|chino|pants|shorts/i, [u("1542272604-787c3835535d"), u("1541099649105-f69ad21f3246")]],
+  [/sneakers|shoes|heels|sandals/i, [u("1542291026-7eec264c27ff"), u("1460353581320-0d10f17e5b14")]],
+  [/necklace|bead/i, [u("1515562141207-82a3b46f4408"), u("1573408301185-49e7f4c2e8dc")]],
+  [/head.*wrap|silk/i, [u("1590735213920-68192a487bc2"), u("1583391733981-8b530ba24120")]],
+  [/belt/i, [u("1553062407-98eeb64c6a62"), u("1541099649105-f69ad21f3246")]],
+  [/sunglasses/i, [u("1511499767150-a48a237f0083"), u("1572635196237-14b3f281503f")]],
+  [/tote|bag/i, [u("1548036328-c11fea62b64e"), u("1590874103328-4f7f72c776be")]],
+  [/uniform|school/i, [u("1523381210434-271e8be1f52b"), u("1489987707025-afc232f7ea0f")]],
+
+  // Home & Kitchen
+  [/blender/i, [u("1570222094114-d054a817e56b"), u("1585659895524-72537e06e86c")]],
+  [/rice.*cooker/i, [u("1556909114-f6e7ad7d3136"), u("1585515320310-259814833e62")]],
+  [/pan|non-stick|cookware/i, [u("1556909172-54557c7e4fb7"), u("1583394838336-acd977736f90")]],
+  [/knife.*set|kitchen.*knife/i, [u("1593618998160-e34014e67546"), u("1556909114-f6e7ad7d3136")]],
+  [/microwave/i, [u("1585659895524-72537e06e86c"), u("1556909114-f6e7ad7d3136")]],
+  [/water.*dispenser/i, [u("1548839140-29a749e1cf4d"), u("1556909114-f6e7ad7d3136")]],
+  [/gas.*stove|burner/i, [u("1556909114-f6e7ad7d3136"), u("1507089947368-19c1da9775ae")]],
+  [/dining.*table/i, [u("1524758631624-e2822e304c36"), u("1513694203232-719a280e022f")]],
+  [/bed.*sheet|bedding/i, [u("1583847268964-b28dc8f51f92"), u("1522771739844-6a9f6d5c91cc")]],
+  [/ceiling.*fan|fan/i, [u("1600585152220-90363fe7e115"), u("1507089947368-19c1da9775ae")]],
+  [/curtain/i, [u("1583847268964-b28dc8f51f92"), u("1513694203232-719a280e022f")]],
+  [/container|storage/i, [u("1556909172-54557c7e4fb7"), u("1585515320310-259814833e62")]],
+  [/iron.*press/i, [u("1585515320310-259814833e62"), u("1556909114-f6e7ad7d3136")]],
+  [/vacuum/i, [u("1558618666-fcd25c85f82e"), u("1585515320310-259814833e62")]],
+  [/air.*fryer/i, [u("1648653299730-5ce0c1b2d7e8"), u("1585659895524-72537e06e86c")]],
+  [/kettle/i, [u("1556909172-54557c7e4fb7"), u("1556909114-f6e7ad7d3136")]],
+  [/pressure.*cooker/i, [u("1585659895524-72537e06e86c"), u("1556909114-f6e7ad7d3136")]],
+  [/dish.*rack/i, [u("1556909172-54557c7e4fb7"), u("1507089947368-19c1da9775ae")]],
+  [/towel/i, [u("1583847268964-b28dc8f51f92"), u("1522771739844-6a9f6d5c91cc")]],
+  [/clock/i, [u("1507089947368-19c1da9775ae"), u("1524758631624-e2822e304c36")]],
+  [/pillow/i, [u("1583847268964-b28dc8f51f92"), u("1522771739844-6a9f6d5c91cc")]],
+  [/bathroom|cabinet/i, [u("1600585152220-90363fe7e115"), u("1507089947368-19c1da9775ae")]],
+  [/laundry|basket/i, [u("1556909172-54557c7e4fb7"), u("1585515320310-259814833e62")]],
+  [/door.*mat|mat\b/i, [u("1513694203232-719a280e022f"), u("1524758631624-e2822e304c36")]],
+  [/scale.*digital|kitchen.*scale/i, [u("1556909114-f6e7ad7d3136"), u("1585515320310-259814833e62")]],
+
+  // Beauty & Care
+  [/shea.*butter|moistur|lotion|cream/i, [u("1570172619644-dfd03ed5d881"), u("1608248543803-ba4f8c70ae0b")]],
+  [/black.*soap|soap/i, [u("1607006344380-e6a3ba0d7983"), u("1556228578-0d85b1a4d571")]],
+  [/hair.*oil|hair.*growth|coconut.*oil/i, [u("1598440947619-2c35fc9aa908"), u("1570172619644-dfd03ed5d881")]],
+  [/perfume/i, [u("1541643600-d3294030a96e"), u("1523293182086-7651a899d37f")]],
+  [/makeup|eyeshadow|lip.*gloss/i, [u("1596462502278-27bfdc403348"), u("1522335789203-aabd1fc54bc9")]],
+  [/nail.*polish/i, [u("1604654894610-df63bc536371"), u("1522335789203-aabd1fc54bc9")]],
+  [/straightener|hair.*dryer/i, [u("1522337360788-8b13dee7a37e"), u("1571781926291-c477ebfd024b")]],
+  [/beard/i, [u("1621607512022-6e061098859c"), u("1598440947619-2c35fc9aa908")]],
+  [/toner|cleanser|serum|anti-aging/i, [u("1556228578-0d85b1a4d571"), u("1570172619644-dfd03ed5d881")]],
+  [/face.*mask/i, [u("1596755389378-c31d4cc11137"), u("1570172619644-dfd03ed5d881")]],
+  [/body.*scrub/i, [u("1608248543803-ba4f8c70ae0b"), u("1556228578-0d85b1a4d571")]],
+  [/braiding|extension/i, [u("1522337360788-8b13dee7a37e"), u("1571781926291-c477ebfd024b")]],
+  [/deodorant/i, [u("1556228578-0d85b1a4d571"), u("1608248543803-ba4f8c70ae0b")]],
+  [/dental|tooth/i, [u("1559589688-0e9d80279e58"), u("1556228578-0d85b1a4d571")]],
+  [/grooming.*set|men.*groom/i, [u("1621607512022-6e061098859c"), u("1598440947619-2c35fc9aa908")]],
+  [/body.*mist/i, [u("1541643600-d3294030a96e"), u("1523293182086-7651a899d37f")]],
+  [/foot.*care/i, [u("1556228578-0d85b1a4d571"), u("1570172619644-dfd03ed5d881")]],
+  [/aromatherapy/i, [u("1608248543803-ba4f8c70ae0b"), u("1570172619644-dfd03ed5d881")]],
+
+  // Electronics
+  [/speaker/i, [u("1608043152269-423dbba4e7e1"), u("1545454675-c3560461bc41")]],
+  [/earbuds|wireless.*ear/i, [u("1590658268037-6bf12f032570"), u("1606220945770-b5b6c2c55bf1")]],
+  [/smart.*watch/i, [u("1546868871-af0de0e29417"), u("1579586337278-3befd40fd17a")]],
+  [/power.*bank|portable.*charger/i, [u("1609091839311-d5365f9ff1c5"), u("1583394838336-acd977736f90")]],
+  [/usb.*hub/i, [u("1612815154858-60aa4c59eaa6"), u("1593642632559-0c6d3fc62b89")]],
+  [/webcam/i, [u("1587826080692-f439cd0b70d8"), u("1612815154858-60aa4c59eaa6")]],
+  [/desk.*lamp|led.*lamp/i, [u("1507473885765-e6ed057ab6fe"), u("1513506003901-1e6a229e2d15")]],
+  [/smart.*tv|tv\b/i, [u("1593359677879-a4bb92f829d1"), u("1593784991095-a205069470b6")]],
+  [/gaming.*controller|controller/i, [u("1592840496694-26d035b52b48"), u("1606144042614-b2417e99c4e3")]],
+  [/ring.*light/i, [u("1590658268037-6bf12f032570"), u("1507473885765-e6ed057ab6fe")]],
+  [/hdmi|cable/i, [u("1612815154858-60aa4c59eaa6"), u("1593642632559-0c6d3fc62b89")]],
+  [/wireless.*mouse|mouse\b/i, [u("1527864454253-5f5516e4f2e1"), u("1593642632559-0c6d3fc62b89")]],
+  [/mechanical.*keyboard|keyboard/i, [u("1595225476474-87563907a212"), u("1587829741301-dc798b83add3")]],
+  [/action.*camera|camera/i, [u("1502920917128-1aa500764cbd"), u("1516035069371-29a1b244cc32")]],
+  [/drone/i, [u("1507582020474-9a35b7d455d9"), u("1473968512647-3e447244af8f")]],
+  [/car.*phone.*mount/i, [u("1612815154858-60aa4c59eaa6"), u("1593642632559-0c6d3fc62b89")]],
+  [/ssd|flash.*drive/i, [u("1597872200969-2b65d56bd16b"), u("1612815154858-60aa4c59eaa6")]],
+  [/smart.*plug/i, [u("1558618666-fcd25c85f82e"), u("1593642632559-0c6d3fc62b89")]],
+  [/security.*camera/i, [u("1585771724684-38269d6639fd"), u("1558618666-fcd25c85f82e")]],
+  [/headphones/i, [u("1583394838336-acd977736f90"), u("1505740420928-5e560c06d30e")]],
+  [/smart.*light|light.*bulb/i, [u("1507473885765-e6ed057ab6fe"), u("1558618666-fcd25c85f82e")]],
+  [/projector/i, [u("1478720568477-152d9b164e26"), u("1593784991095-a205069470b6")]],
+
+  // Food & Beverages
+  [/jollof|spice.*mix|kelewele|dawadawa/i, [u("1596040033229-a9821ebd058d"), u("1532336414036-ccd0702aa36a")]],
+  [/cocoa/i, [u("1481391319762-47dff72854ec"), u("1606312619070-d48b4c652e52")]],
+  [/shito|pepper.*sauce/i, [u("1563379926898-05f4575a45d8"), u("1596040033229-a9821ebd058d")]],
+  [/palm.*oil|cooking.*oil|oil/i, [u("1474979266404-7eaacbcd87c5"), u("1596040033229-a9821ebd058d")]],
+  [/groundnut|peanut/i, [u("1567206563064-6f60f40a2b57"), u("1596040033229-a9821ebd058d")]],
+  [/dried.*fish|fish/i, [u("1498654200943-1088dd4438ae"), u("1504674900247-0877df9cc836")]],
+  [/cassava|gari|banku|flour/i, [u("1574484284002-952d92456975"), u("1596040033229-a9821ebd058d")]],
+  [/milo|chocolate/i, [u("1481391319762-47dff72854ec"), u("1606312619070-d48b4c652e52")]],
+  [/tea|lipton/i, [u("1556679343-c7306c1976bc"), u("1597318181409-cf64d0b5d8a2")]],
+  [/milk/i, [u("1563636619-e9143da7973b"), u("1550583724-b2692b85b150")]],
+  [/sugar/i, [u("1574484284002-952d92456975"), u("1596040033229-a9821ebd058d")]],
+  [/noodles/i, [u("1569058242567-93de6f36f8e6"), u("1612929633738-8fe44f7ec841")]],
+  [/kontomire|sobolo|hibiscus|tiger.*nut/i, [u("1596040033229-a9821ebd058d"), u("1490645935967-10de6ba17061")]],
+  [/coconut.*cream/i, [u("1550411839-d0a80c3f08fc"), u("1490645935967-10de6ba17061")]],
+  [/rice.*bag|rice/i, [u("1586201375761-83865001e31c"), u("1574484284002-952d92456975")]],
+  [/tomato/i, [u("1546554137-f86b9593a222"), u("1563379926898-05f4575a45d8")]],
+  [/plantain.*chips|chips/i, [u("1566478989037-eec170784d0b"), u("1596040033229-a9821ebd058d")]],
+  [/bofrot|donut/i, [u("1551024601-824cc6c3fcf7"), u("1504674900247-0877df9cc836")]],
+
+  // Sports & Fitness
+  [/yoga.*mat/i, [u("1601925260368-ae2f83cf8b7f"), u("1544367567-0f2fcb009e0b")]],
+  [/dumbbell/i, [u("1534438327276-14e5300c3a48"), u("1571019614242-c5c5dee9f50b")]],
+  [/resistance.*band/i, [u("1598289431512-b97b0917affc"), u("1517836357463-d25dfeac3438")]],
+  [/running.*shoes/i, [u("1542291026-7eec264c27ff"), u("1460353581320-0d10f17e5b14")]],
+  [/football|soccer/i, [u("1575361204480-aadea25e6e68"), u("1431324155629-1a6deb1dec8d")]],
+  [/basketball/i, [u("1546519638-68e109498ffc"), u("1474224017046-182ece492725")]],
+  [/jump.*rope|skipping/i, [u("1517836357463-d25dfeac3438"), u("1598289431512-b97b0917affc")]],
+  [/water.*bottle/i, [u("1523362628745-0c100150b504"), u("1548839140-29a749e1cf4d")]],
+  [/gym.*bag|duffel/i, [u("1553062407-98eeb64c6a62"), u("1548036328-c11fea62b64e")]],
+  [/boxing.*gloves|boxing/i, [u("1549719386-1005259b0005"), u("1517836357463-d25dfeac3438")]],
+  [/tennis/i, [u("1554068865-24cecd4e34b8"), u("1535131749006-b7f58c99034b")]],
+  [/swim|goggles/i, [u("1530549387789-4c1017266635"), u("1576678927484-cc907957088c")]],
+  [/cycling|helmet/i, [u("1558618666-fcd25c85f82e"), u("1576678927484-cc907957088c")]],
+  [/exercise.*bike|bike/i, [u("1576678927484-cc907957088c"), u("1517836357463-d25dfeac3438")]],
+  [/pull.*up.*bar/i, [u("1534438327276-14e5300c3a48"), u("1571019614242-c5c5dee9f50b")]],
+  [/fitness.*tracker/i, [u("1575311373937-040b8e1fd5b6"), u("1510017803434-a899398421b3")]],
+  [/sports.*bra/i, [u("1518611012118-696072aa579a"), u("1517836357463-d25dfeac3438")]],
+  [/training.*cone/i, [u("1431324155629-1a6deb1dec8d"), u("1575361204480-aadea25e6e68")]],
+  [/shin.*guard/i, [u("1431324155629-1a6deb1dec8d"), u("1575361204480-aadea25e6e68")]],
+  [/goalkeeper/i, [u("1431324155629-1a6deb1dec8d"), u("1575361204480-aadea25e6e68")]],
+  [/table.*tennis|ping.*pong/i, [u("1554068865-24cecd4e34b8"), u("1535131749006-b7f58c99034b")]],
+  [/badminton/i, [u("1554068865-24cecd4e34b8"), u("1535131749006-b7f58c99034b")]],
+  [/arm.*band|workout.*band/i, [u("1598289431512-b97b0917affc"), u("1517836357463-d25dfeac3438")]],
+  [/foam.*roller/i, [u("1544367567-0f2fcb009e0b"), u("1517836357463-d25dfeac3438")]],
+  [/protein.*shaker|shaker/i, [u("1523362628745-0c100150b504"), u("1548839140-29a749e1cf4d")]],
+];
+
+// Fallback category images
+const categoryFallback: Record<string, string[]> = {
+  "Phones & Tablets": [u("1511707171634-5f897ff02aa9"), u("1592899677977-9c10ca588bbd")],
+  "Laptops & Computers": [u("1496181133206-80ce9b88a853"), u("1525547719571-a2d4ac8945e2")],
+  "Fashion & Clothing": [u("1445205170230-053b83016050"), u("1523381210434-271e8be1f52b")],
+  "Home & Kitchen": [u("1556909114-f6e7ad7d3136"), u("1585515320310-259814833e62")],
+  "Beauty & Care": [u("1596462502278-27bfdc403348"), u("1571781926291-c477ebfd024b")],
+  "Electronics": [u("1518770660439-4636190af475"), u("1505740420928-5e560c06d30e")],
+  "Food & Beverages": [u("1606787366850-de6330128bfc"), u("1498837167922-ddd27525d352")],
+  "Sports & Fitness": [u("1517836357463-d25dfeac3438"), u("1571019614242-c5c5dee9f50b")],
 };
 
-// Map categories to curated Unsplash photo IDs for variety
-const categoryImages: Record<string, string[]> = {
-  "Phones & Tablets": [
-    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1580910051074-3eb694886f4b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400&h=400&fit=crop",
-  ],
-  "Laptops & Computers": [
-    "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1602080858428-57174f9431cf?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400&h=400&fit=crop",
-  ],
-  "Fashion & Clothing": [
-    "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1434389677669-e08b4cda3a00?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=400&fit=crop",
-  ],
-  "Home & Kitchen": [
-    "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1585515320310-259814833e62?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400&h=400&fit=crop",
-  ],
-  "Beauty & Care": [
-    "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=400&h=400&fit=crop",
-  ],
-  "Electronics": [
-    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=400&h=400&fit=crop",
-  ],
-  "Food & Beverages": [
-    "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&h=400&fit=crop",
-  ],
-  "Sports & Fitness": [
-    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1461896836934-bd45ba054281?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=400&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=400&fit=crop",
-  ],
+const findImages = (name: string, cat: string): string[] => {
+  for (const [pattern, imgs] of keywordImages) {
+    if (pattern.test(name)) return imgs;
+  }
+  return categoryFallback[cat] || categoryFallback["Electronics"];
 };
 
 const p = (name: string, price: number, cat: string, opts?: Partial<Product>): Product => {
   _id++;
-  const imgs = categoryImages[cat] || categoryImages["Electronics"];
-  const i1 = (_id - 1) % imgs.length;
-  const i2 = (_id) % imgs.length;
   return {
     id: _id,
     name,
     price,
     category: cat,
-    images: [imgs[i1], imgs[i2]],
+    images: findImages(name, cat),
     rating: +(3.5 + ((_id * 3 + 7) % 15) / 10).toFixed(1),
     reviews: (_id * 7 + 13) % 190 + 12,
     inStock: _id % 11 !== 0,
