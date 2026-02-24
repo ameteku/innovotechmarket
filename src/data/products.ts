@@ -405,8 +405,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 15499,
     category: "Laptops & Computers",
     images: [
-      "https://placehold.co/400x400/0d1b2a/ffffff?text=Gaming+Bundle",
-      "https://placehold.co/400x400/1b2838/ffffff?text=Gaming+Bundle",
+      "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1602080858428-57174f9431cf?w=400&h=400&fit=crop",
     ],
     rating: 4.9,
     reviews: 203,
