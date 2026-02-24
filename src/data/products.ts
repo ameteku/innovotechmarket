@@ -524,8 +524,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 5299,
     category: "Laptops & Computers",
     images: [
-      "https://placehold.co/400x400/0d1b2a/ffffff?text=Student+Pack",
-      "https://placehold.co/400x400/1b2838/ffffff?text=Student+Pack",
+      "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop",
     ],
     rating: 4.6,
     reviews: 184,
