@@ -30,23 +30,111 @@ export const categories = [
 const flashEnd = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
 const monthlyEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-const catColors: Record<string, [string, string]> = {};
-categories.forEach(c => { catColors[c.name] = [c.color, c.accent]; });
+
 
 let _id = 0;
+const imgQuery = (name: string, cat: string) => {
+  const q = encodeURIComponent(`${name} ${cat} product`);
+  return [
+    `https://images.unsplash.com/photo-placeholder?w=400&h=400&q=80&fit=crop&auto=format`,
+  ];
+};
+
+// Map categories to curated Unsplash photo IDs for variety
+const categoryImages: Record<string, string[]> = {
+  "Phones & Tablets": [
+    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1580910051074-3eb694886f4b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400&h=400&fit=crop",
+  ],
+  "Laptops & Computers": [
+    "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1602080858428-57174f9431cf?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400&h=400&fit=crop",
+  ],
+  "Fashion & Clothing": [
+    "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1434389677669-e08b4cda3a00?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=400&fit=crop",
+  ],
+  "Home & Kitchen": [
+    "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1585515320310-259814833e62?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1524758631624-e2822e304c36?w=400&h=400&fit=crop",
+  ],
+  "Beauty & Care": [
+    "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=400&h=400&fit=crop",
+  ],
+  "Electronics": [
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=400&h=400&fit=crop",
+  ],
+  "Food & Beverages": [
+    "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&h=400&fit=crop",
+  ],
+  "Sports & Fitness": [
+    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1576678927484-cc907957088c?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1461896836934-bd45ba054281?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=400&h=400&fit=crop",
+    "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=400&h=400&fit=crop",
+  ],
+};
+
 const p = (name: string, price: number, cat: string, opts?: Partial<Product>): Product => {
   _id++;
-  const [c1, c2] = catColors[cat] || ["333333", "666666"];
-  const t = encodeURIComponent(name.substring(0, 18));
+  const imgs = categoryImages[cat] || categoryImages["Electronics"];
+  const i1 = (_id - 1) % imgs.length;
+  const i2 = (_id) % imgs.length;
   return {
     id: _id,
     name,
     price,
     category: cat,
-    images: [
-      `https://placehold.co/400x400/${c1}/ffffff?text=${t}`,
-      `https://placehold.co/400x400/${c2}/ffffff?text=${t}`,
-    ],
+    images: [imgs[i1], imgs[i2]],
     rating: +(3.5 + ((_id * 3 + 7) % 15) / 10).toFixed(1),
     reviews: (_id * 7 + 13) % 190 + 12,
     inStock: _id % 11 !== 0,
@@ -282,8 +370,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 5499,
     category: "Phones & Tablets",
     images: [
-      "https://placehold.co/400x400/1a1a2e/ffffff?text=Phone+Bundle",
-      "https://placehold.co/400x400/2d3250/ffffff?text=Phone+Bundle",
+      "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&h=400&fit=crop",
     ],
     rating: 4.8,
     reviews: 156,
@@ -299,8 +387,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 1099,
     category: "Home & Kitchen",
     images: [
-      "https://placehold.co/400x400/2d6a4f/ffffff?text=Kitchen+Pack",
-      "https://placehold.co/400x400/40916c/ffffff?text=Kitchen+Pack",
+      "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1585515320310-259814833e62?w=400&h=400&fit=crop",
     ],
     rating: 4.6,
     reviews: 89,
@@ -316,8 +404,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 15499,
     category: "Laptops & Computers",
     images: [
-      "https://placehold.co/400x400/0d1b2a/ffffff?text=Gaming+Bundle",
-      "https://placehold.co/400x400/1b2838/ffffff?text=Gaming+Bundle",
+      "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1602080858428-57174f9431cf?w=400&h=400&fit=crop",
     ],
     rating: 4.9,
     reviews: 203,
@@ -333,8 +421,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 349,
     category: "Beauty & Care",
     images: [
-      "https://placehold.co/400x400/8b5e83/ffffff?text=Beauty+Box",
-      "https://placehold.co/400x400/a0728a/ffffff?text=Beauty+Box",
+      "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&h=400&fit=crop",
     ],
     rating: 4.7,
     reviews: 134,
@@ -350,8 +438,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 11499,
     category: "Laptops & Computers",
     images: [
-      "https://placehold.co/400x400/0d1b2a/ffffff?text=Office+Bundle",
-      "https://placehold.co/400x400/1b2838/ffffff?text=Office+Bundle",
+      "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=400&h=400&fit=crop",
     ],
     rating: 4.5,
     reviews: 78,
@@ -367,8 +455,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 749,
     category: "Sports & Fitness",
     images: [
-      "https://placehold.co/400x400/005f73/ffffff?text=Fitness+Kit",
-      "https://placehold.co/400x400/0a9396/ffffff?text=Fitness+Kit",
+      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=400&fit=crop",
     ],
     rating: 4.6,
     reviews: 112,
@@ -384,8 +472,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 279,
     category: "Food & Beverages",
     images: [
-      "https://placehold.co/400x400/9b2226/ffffff?text=Food+Hamper",
-      "https://placehold.co/400x400/ae2012/ffffff?text=Food+Hamper",
+      "https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=400&h=400&fit=crop",
     ],
     rating: 4.8,
     reviews: 245,
@@ -401,8 +489,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 949,
     category: "Electronics",
     images: [
-      "https://placehold.co/400x400/023e8a/ffffff?text=Tech+Bundle",
-      "https://placehold.co/400x400/0353a4/ffffff?text=Tech+Bundle",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=400&fit=crop",
     ],
     rating: 4.7,
     reviews: 167,
@@ -418,8 +506,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 599,
     category: "Fashion & Clothing",
     images: [
-      "https://placehold.co/400x400/8B4513/ffffff?text=Fashion+Combo",
-      "https://placehold.co/400x400/A0522D/ffffff?text=Fashion+Combo",
+      "https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop",
     ],
     rating: 4.4,
     reviews: 91,
@@ -435,8 +523,8 @@ export const bundleProducts: Product[] = [
     originalPrice: 5299,
     category: "Laptops & Computers",
     images: [
-      "https://placehold.co/400x400/0d1b2a/ffffff?text=Student+Pack",
-      "https://placehold.co/400x400/1b2838/ffffff?text=Student+Pack",
+      "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop",
     ],
     rating: 4.6,
     reviews: 184,
