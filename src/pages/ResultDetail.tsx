@@ -1,6 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useEffect, useState, useMemo } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Gift } from 'lucide-react';
 
 interface ResultMedia {
   url: string;
@@ -8,11 +8,19 @@ interface ResultMedia {
   fileName: string;
 }
 
+interface GiftCard {
+  shop: string;
+  amount: string;
+  number: string;
+  passcode?: string;
+}
+
 interface Result {
   id: string;
   created_at: string;
   bg_color?: 'pink' | 'black' | 'blue' | 'red';
   message?: string;
+  giftcard?: GiftCard;
   music?: ResultMedia;
   image?: ResultMedia;
 }
@@ -58,6 +66,10 @@ const GLOBAL_CSS = `
     from { opacity: 0; transform: translateY(30px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+  @keyframes flip-in {
+    from { transform: rotateY(90deg); opacity: 0; }
+    to   { transform: rotateY(0deg);  opacity: 1; }
+  }
 `;
 
 function ConfettiLayer({ colors }: { colors: string[] }) {
@@ -96,6 +108,7 @@ const ResultDetail = () => {
   const [result, setResult] = useState<Result | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -228,6 +241,128 @@ const ResultDetail = () => {
                 Download
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── Gift Card ── */}
+        {result?.giftcard && (
+          <div style={{
+            padding: '40px 24px 16px',
+            maxWidth: 680,
+            margin: '0 auto',
+            animation: 'rise 0.6s 0.4s ease-out both',
+            opacity: 0,
+          }}>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 14 }}>
+              Your Gift
+            </p>
+
+            {!revealed ? (
+              /* ── Locked card ── */
+              <button
+                onClick={() => setRevealed(true)}
+                style={{
+                  width: '100%',
+                  background: t.playerBg,
+                  border: `1px solid ${t.playerBorder}`,
+                  backdropFilter: 'blur(12px)',
+                  borderRadius: 20,
+                  padding: '40px 24px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 12,
+                  color: 'white',
+                  transition: 'transform 0.15s ease, opacity 0.15s ease',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              >
+                <Gift style={{ width: 36, height: 36, opacity: 0.9 }} />
+                <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.02em' }}>
+                  {result.giftcard.shop}
+                </span>
+                <span style={{ fontSize: 28, fontWeight: 900 }}>
+                  {result.giftcard.amount}
+                </span>
+                <span style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  opacity: 0.6,
+                  background: 'rgba(255,255,255,0.12)',
+                  padding: '6px 16px',
+                  borderRadius: 20,
+                }}>
+                  Tap to reveal
+                </span>
+              </button>
+            ) : (
+              /* ── Revealed card ── */
+              <div style={{
+                background: t.playerBg,
+                border: `1px solid ${t.playerBorder}`,
+                backdropFilter: 'blur(12px)',
+                borderRadius: 20,
+                padding: '32px 28px',
+                animation: 'flip-in 0.4s ease-out both',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                  <div>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 4 }}>
+                      Gift Card
+                    </p>
+                    <p style={{ color: 'white', fontSize: 22, fontWeight: 800 }}>{result.giftcard.shop}</p>
+                  </div>
+                  <p style={{ color: 'white', fontSize: 30, fontWeight: 900 }}>{result.giftcard.amount}</p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4 }}>
+                      Card Number
+                    </p>
+                    <p style={{
+                      color: 'white',
+                      fontSize: 18,
+                      fontWeight: 700,
+                      fontFamily: 'monospace',
+                      letterSpacing: '0.12em',
+                      background: 'rgba(255,255,255,0.08)',
+                      padding: '10px 14px',
+                      borderRadius: 10,
+                      userSelect: 'all',
+                    }}>
+                      {result.giftcard.number}
+                    </p>
+                  </div>
+
+                  {result.giftcard.passcode && (
+                    <div>
+                      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 4 }}>
+                        Passcode / PIN
+                      </p>
+                      <p style={{
+                        color: 'white',
+                        fontSize: 18,
+                        fontWeight: 700,
+                        fontFamily: 'monospace',
+                        letterSpacing: '0.12em',
+                        background: 'rgba(255,255,255,0.08)',
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        userSelect: 'all',
+                      }}>
+                        {result.giftcard.passcode}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

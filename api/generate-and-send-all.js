@@ -111,6 +111,7 @@ export default async function handler(req, res) {
     deliver = 'whatsapp',
     bg_color = 'pink',
     message = null,
+    giftcard = null,
   } = req.body ?? {};
 
   if (!image_url) return res.status(400).json({ error: 'image_url is required' });
@@ -279,6 +280,7 @@ export default async function handler(req, res) {
       created_at: new Date().toISOString(),
       bg_color,
       ...(message && { message }),
+      ...(giftcard && { giftcard }),
       ...(musicData && { music: { url: musicData.blobUrl, prompt: musicData.prompt, fileName: musicData.fileName } }),
       ...(imageData && { image: { url: imageData.blobUrl, prompt: imageData.prompt, fileName: imageData.fileName } }),
     };
