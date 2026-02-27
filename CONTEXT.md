@@ -2,7 +2,7 @@
 
 ## Overview
 
-A React/Vite web app (marketplace) with a Vercel serverless API that generates AI music (ElevenLabs) and AI images (OpenAI gpt-image-1) and sends them to a WhatsApp group via Green API.
+A React/Vite web app (marketplace) with a Vercel serverless API that generates AI music (ElevenLabs) and AI images (OpenAI gpt-image-1). Delivery is configurable: send to a WhatsApp group via Green API, or return a shareable hosted result page, or both.
 
 ---
 
@@ -21,13 +21,30 @@ Backend (Vercel Serverless Functions)
     │       ├── 4. Sends to WhatsApp group via Green API sendFileByUrl
     │       └── 5. Deletes blob after 60s (Green API fetches async)
     │
-    └── api/generate-and-send-image.js    (image)
-            ├── 1. Verifies API key via Unkey
-            ├── 2. Fetches source image from caller-provided URL
-            ├── 3. Edits image with OpenAI gpt-image-1
-            ├── 4. Uploads PNG to Vercel Blob (temp public URL)
-            ├── 5. Sends to WhatsApp group via Green API sendFileByUrl
-            └── 6. Deletes blob after 60s
+    ├── api/generate-and-send-image.js    (image only)
+    │       ├── 1. Verifies API key via Unkey
+    │       ├── 2. Fetches source image from caller-provided URL
+    │       ├── 3. Edits image with OpenAI gpt-image-1
+    │       ├── 4. Uploads PNG to Vercel Blob (temp public URL)
+    │       ├── 5. Sends to WhatsApp group via Green API sendFileByUrl
+    │       └── 6. Deletes blob after 60s
+    │
+    ├── api/generate-and-send-all.js      (music + image, combined)
+    │       ├── 1. Verifies API key via Unkey
+    │       ├── 2. Runs music + image pipelines in parallel (Promise.allSettled)
+    │       ├── 3. Delivers based on `deliver` param:
+    │       │       "whatsapp" → sends both to WhatsApp, deletes blobs after 60s
+    │       │       "link"     → stores result metadata JSON in Vercel Blob, returns result_url
+    │       │       "both"     → sends to WhatsApp AND returns result_url (blobs kept alive)
+    │       └── 4. Returns { success, music, image, result_url? }
+    │
+    └── api/result.js                     (public result fetch, no auth)
+            ├── GET /api/result?id=<uuid>
+            ├── Looks up result_{id}.json in Vercel Blob
+            └── Returns result metadata { id, created_at, music?, image? }
+
+Frontend
+    └── /result/:id  →  ResultDetail page (image + audio player)
 ```
 
 ---
@@ -107,6 +124,81 @@ Same as above — `Authorization: Bearer <unkey-api-key>`
 ```
 GET /api/generate-and-send-image
 ```
+
+---
+
+## API: `POST /api/generate-and-send-all`
+
+Runs music + image pipelines in parallel and delivers based on the `deliver` param.
+
+### Auth
+Same as above — `Authorization: Bearer <unkey-api-key>`
+
+### Request Body (JSON)
+```json
+{
+  "music_prompt": "Afrobeats with guitar",
+  "music_length_ms": 30000,
+  "lyrics": "Line 1\nLine 2",
+  "image_url": "https://example.com/photo.jpg",
+  "image_prompt": "Make it look like a vibrant African market",
+  "image_size": "1024x1024",
+  "deliver": "link"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `image_url` | string | yes | Source image URL |
+| `image_prompt` | string | yes | Image edit instructions |
+| `music_prompt` | string | no | Music style (default: upbeat electronic) |
+| `music_length_ms` | number | no | Duration in ms (default: 30000) |
+| `lyrics` | string | no | Newline-separated lyrics (triggers vocal mode) |
+| `image_size` | string | no | `"1024x1024"` (default), `"1536x1024"`, `"1024x1536"` |
+| `deliver` | string | no | `"whatsapp"` (default), `"link"`, or `"both"` |
+
+### `deliver` values
+
+| Value | Behaviour |
+|-------|-----------|
+| `"whatsapp"` | Sends both files to WhatsApp group, deletes blobs after 60s |
+| `"link"` | Skips WhatsApp, stores result metadata, returns `result_url` |
+| `"both"` | Sends to WhatsApp AND returns `result_url` (blobs kept alive) |
+
+### Response
+```json
+{
+  "success": true,
+  "music": { "success": true, "messageId": "BAE5...", "fileName": "song_xxx.mp3" },
+  "image": { "success": true, "messageId": "BAE5...", "fileName": "image_xxx.png" },
+  "result_url": "https://innovotechmarket.vercel.app/result/abc-123"
+}
+```
+`result_url` is only present when `deliver` is `"link"` or `"both"`.
+
+---
+
+## API: `GET /api/result` (public, no auth)
+
+Returns stored result metadata by ID.
+
+```
+GET /api/result?id=<uuid>
+```
+
+### Response
+```json
+{
+  "id": "abc-123",
+  "created_at": "2026-02-27T12:00:00Z",
+  "music": { "url": "https://...", "prompt": "Afrobeats", "fileName": "song_xxx.mp3" },
+  "image": { "url": "https://...", "prompt": "African market", "fileName": "image_xxx.png" }
+}
+```
+`music` and/or `image` keys are omitted if that pipeline failed.
+
+### Result Page
+Visiting `https://innovotechmarket.vercel.app/result/<id>` shows the generated image and audio player on a single shareable page.
 
 ---
 

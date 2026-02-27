@@ -42,20 +42,20 @@ async function toBuffer(data) {
  *
  * GET  /api/generate-and-send-all  → health check
  * POST /api/generate-and-send-all  → fire off music + image pipelines independently,
- *                                    each generates → uploads → sends to WhatsApp on its own.
- *                                    One failing never blocks the other.
+ *                                    each generates → uploads → delivers based on `deliver` param.
  *
  * Headers:
  *   Authorization: Bearer <unkey-api-key>
  *   Content-Type: application/json
  *
  * Body (JSON):
- *   music_prompt     – music style description     (optional, has default)
- *   music_length_ms  – duration in ms              (optional, default 30000)
- *   lyrics           – newline-separated lyrics    (optional)
- *   image_url        – public URL of source image  (required)
- *   image_prompt     – image edit instructions     (required)
+ *   music_prompt     – music style description              (optional, has default)
+ *   music_length_ms  – duration in ms                      (optional, default 30000)
+ *   lyrics           – newline-separated lyrics            (optional)
+ *   image_url        – public URL of source image          (required)
+ *   image_prompt     – image edit instructions             (required)
  *   image_size       – "1024x1024"|"1536x1024"|"1024x1536" (optional)
+ *   deliver          – "whatsapp"|"link"|"both"            (optional, default "whatsapp")
  */
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -69,6 +69,7 @@ export default async function handler(req, res) {
         image_url: 'string (required) — public URL of source image',
         image_prompt: 'string (required) — edit instructions',
         image_size: '"1024x1024" | "1536x1024" | "1024x1536" (optional)',
+        deliver: '"whatsapp" (default) | "link" | "both"',
       },
       auth: 'Authorization: Bearer <unkey-api-key>',
     });
@@ -107,6 +108,7 @@ export default async function handler(req, res) {
     image_url,
     image_prompt,
     image_size = '1024x1024',
+    deliver = 'whatsapp',
   } = req.body ?? {};
 
   if (!image_url) return res.status(400).json({ error: 'image_url is required' });
@@ -117,9 +119,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: `image_size must be one of: ${validSizes.join(', ')}` });
   }
 
+  const validDelivers = ['whatsapp', 'link', 'both'];
+  if (!validDelivers.includes(deliver)) {
+    return res.status(400).json({ error: `deliver must be one of: ${validDelivers.join(', ')}` });
+  }
+
+  const sendViaWhatsApp = deliver === 'whatsapp' || deliver === 'both';
+  const sendViaLink = deliver === 'link' || deliver === 'both';
+
   const greenApiUrl = `https://${String(CONFIG.GREEN_API_INSTANCE_ID).slice(0, 4)}.api.greenapi.com/waInstance${CONFIG.GREEN_API_INSTANCE_ID}/sendFileByUrl/${CONFIG.GREEN_API_TOKEN}`;
 
-  // Helper: send a file to WhatsApp
   const sendToWhatsApp = async (blobUrl, fileName, caption) => {
     const r = await fetch(greenApiUrl, {
       method: 'POST',
@@ -130,7 +139,7 @@ export default async function handler(req, res) {
     return r.json();
   };
 
-  // ── Full music pipeline: generate → upload blob → send to WhatsApp ──
+  // ── Music pipeline: generate → upload blob only (no delivery) ──
   const musicPipeline = async () => {
     const elevenlabs = new ElevenLabsClient({ apiKey: CONFIG.ELEVENLABS_API_KEY });
     const composeParams = lyrics
@@ -156,16 +165,11 @@ export default async function handler(req, res) {
     console.log(`[music] Generated ${audioBuffer.length} bytes. Uploading...`);
 
     const blob = await put(fileName, audioBuffer, { access: 'public', contentType: 'audio/mpeg', addRandomSuffix: true });
-    console.log(`[music] Uploaded. Sending to WhatsApp...`);
-
-    const green = await sendToWhatsApp(blob.url, fileName, `🎵 ${music_prompt}`);
-    setTimeout(() => del(blob.url).catch(() => {}), 60000);
-
-    console.log(`[music] Sent! messageId=${green.idMessage}`);
-    return { success: true, messageId: green.idMessage, fileName };
+    console.log(`[music] Uploaded: ${blob.url}`);
+    return { blobUrl: blob.url, fileName, prompt: music_prompt };
   };
 
-  // ── Full image pipeline: fetch → edit → upload blob → send to WhatsApp ──
+  // ── Image pipeline: fetch → edit → upload blob only (no delivery) ──
   const imagePipeline = async () => {
     console.log(`[image] Fetching source image...`);
     const imageResponse = await fetch(image_url);
@@ -193,13 +197,8 @@ export default async function handler(req, res) {
     console.log(`[image] Generated ${generatedBuffer.length} bytes. Uploading...`);
 
     const blob = await put(fileName, generatedBuffer, { access: 'public', contentType: 'image/png', addRandomSuffix: true });
-    console.log(`[image] Uploaded. Sending to WhatsApp...`);
-
-    const green = await sendToWhatsApp(blob.url, fileName, '');
-    setTimeout(() => del(blob.url).catch(() => {}), 60000);
-
-    console.log(`[image] Sent! messageId=${green.idMessage}`);
-    return { success: true, messageId: green.idMessage, fileName };
+    console.log(`[image] Uploaded: ${blob.url}`);
+    return { blobUrl: blob.url, fileName, prompt: image_prompt };
   };
 
   // ── Fire both pipelines independently — neither waits on the other ──
@@ -208,13 +207,82 @@ export default async function handler(req, res) {
     imagePipeline(),
   ]);
 
-  const music = musicOutcome.status === 'fulfilled'
-    ? musicOutcome.value
-    : { success: false, error: musicOutcome.reason?.message ?? 'Unknown error' };
+  const musicData = musicOutcome.status === 'fulfilled' ? musicOutcome.value : null;
+  const imageData = imageOutcome.status === 'fulfilled' ? imageOutcome.value : null;
 
-  const image = imageOutcome.status === 'fulfilled'
-    ? imageOutcome.value
-    : { success: false, error: imageOutcome.reason?.message ?? 'Unknown error' };
+  const music = {};
+  const image = {};
+
+  // ── WhatsApp delivery ──
+  if (sendViaWhatsApp) {
+    if (musicData) {
+      try {
+        const green = await sendToWhatsApp(musicData.blobUrl, musicData.fileName, `🎵 ${musicData.prompt}`);
+        music.success = true;
+        music.messageId = green.idMessage;
+        music.fileName = musicData.fileName;
+        console.log(`[music] Sent to WhatsApp! messageId=${green.idMessage}`);
+      } catch (e) {
+        music.success = false;
+        music.error = e.message;
+      }
+    } else {
+      music.success = false;
+      music.error = musicOutcome.reason?.message ?? 'Unknown error';
+    }
+
+    if (imageData) {
+      try {
+        const green = await sendToWhatsApp(imageData.blobUrl, imageData.fileName, '');
+        image.success = true;
+        image.messageId = green.idMessage;
+        image.fileName = imageData.fileName;
+        console.log(`[image] Sent to WhatsApp! messageId=${green.idMessage}`);
+      } catch (e) {
+        image.success = false;
+        image.error = e.message;
+      }
+    } else {
+      image.success = false;
+      image.error = imageOutcome.reason?.message ?? 'Unknown error';
+    }
+
+    // Only delete blobs when NOT also creating a hosted link (link needs them alive)
+    if (!sendViaLink) {
+      if (musicData) setTimeout(() => del(musicData.blobUrl).catch(() => {}), 60000);
+      if (imageData) setTimeout(() => del(imageData.blobUrl).catch(() => {}), 60000);
+    }
+  } else {
+    // Not sending to WhatsApp — report pipeline results only
+    music.success = musicData !== null;
+    if (!musicData) music.error = musicOutcome.reason?.message ?? 'Unknown error';
+    if (musicData) music.fileName = musicData.fileName;
+
+    image.success = imageData !== null;
+    if (!imageData) image.error = imageOutcome.reason?.message ?? 'Unknown error';
+    if (imageData) image.fileName = imageData.fileName;
+  }
+
+  // ── Hosted result page ──
+  let result_url;
+  if (sendViaLink && (musicData || imageData)) {
+    const id = crypto.randomUUID();
+    const metadata = {
+      id,
+      created_at: new Date().toISOString(),
+      ...(musicData && { music: { url: musicData.blobUrl, prompt: musicData.prompt, fileName: musicData.fileName } }),
+      ...(imageData && { image: { url: imageData.blobUrl, prompt: imageData.prompt, fileName: imageData.fileName } }),
+    };
+
+    await put(`result_${id}.json`, JSON.stringify(metadata), {
+      access: 'public',
+      contentType: 'application/json',
+      addRandomSuffix: false,
+    });
+
+    result_url = `https://innovotechmarket.vercel.app/result/${id}`;
+    console.log(`[result] Stored metadata. result_url=${result_url}`);
+  }
 
   const overallSuccess = music.success || image.success;
 
@@ -222,5 +290,6 @@ export default async function handler(req, res) {
     success: overallSuccess,
     music,
     image,
+    ...(result_url && { result_url }),
   });
 }
