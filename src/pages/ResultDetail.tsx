@@ -240,7 +240,14 @@ const ResultDetail = () => {
           padding: '32px 0 40px',
           textTransform: 'uppercase',
         }}>
-          InnovoTech Market
+          <a
+            href="https://ammeterventures.com/labs"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none' }}
+          >
+            ammeterLabs.com
+          </a>
         </p>
 
       </div>
