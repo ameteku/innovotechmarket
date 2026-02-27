@@ -1,4 +1,4 @@
-import OpenAI, { toFile } from 'openai';
+// openai SDK not needed — we call the REST API directly to avoid multipart upload issues
 import { Unkey } from '@unkey/api';
 import { put, del } from '@vercel/blob';
 
@@ -109,18 +109,32 @@ export default async function handler(req, res) {
     console.log(`[1/4] Fetched ${imageBuffer.length} bytes (${contentType})`);
 
     // ── Step 2: Generate edited image with OpenAI gpt-image-1 ──
-    console.log(`[2/4] Generating image with prompt: "${prompt}"`);
-    const openai = new OpenAI({ apiKey: CONFIG.OPENAI_API_KEY });
+    console.log(`[2/4] Generating image with prompt: "${prompt}". API key present: ${!!CONFIG.OPENAI_API_KEY}, length: ${CONFIG.OPENAI_API_KEY?.length}`);
 
-    const editResponse = await openai.images.edit({
-      model: 'gpt-image-1',
-      image: await toFile(imageBuffer, `source.${ext}`, { type: contentType }),
-      prompt,
-      n: 1,
-      size,
+    // Build FormData for the OpenAI images/edits REST endpoint
+    console.log(`[2/4] Building FormData (${imageBuffer.length} bytes, content-type=${contentType})`);
+    const formData = new FormData();
+    // gpt-image-1 accepts JPEG/PNG/WebP; always send as PNG for consistency
+    const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
+    formData.append('image', imageBlob, `source.png`);
+    formData.append('model', 'gpt-image-1');
+    formData.append('prompt', prompt);
+    formData.append('n', '1');
+    formData.append('size', size);
+
+    console.log(`[2/4] Posting to OpenAI images/edits...`);
+    const editRes = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${CONFIG.OPENAI_API_KEY}` },
+      body: formData,
     });
+    const editJson = await editRes.json();
+    if (!editRes.ok) {
+      throw new Error(`OpenAI API error ${editRes.status}: ${JSON.stringify(editJson.error ?? editJson)}`);
+    }
+    console.log(`[2/4] OpenAI responded OK`);
 
-    const b64 = editResponse.data[0].b64_json;
+    const b64 = editJson.data[0].b64_json;
     const generatedBuffer = Buffer.from(b64, 'base64');
     const fileName = `image_${Date.now()}.png`;
     console.log(`[2/4] Generated ${generatedBuffer.length} bytes → "${fileName}"`);
@@ -162,7 +176,14 @@ export default async function handler(req, res) {
       fileName,
     });
   } catch (err) {
-    console.error('[Error]', err.message);
-    return res.status(500).json({ success: false, error: err.message });
+    const details = {
+      message: err.message,
+      status: err.status,
+      code: err.code,
+      type: err.type,
+      body: err.error,
+    };
+    console.error('[Error]', JSON.stringify(details));
+    return res.status(500).json({ success: false, error: err.message, details });
   }
 }
