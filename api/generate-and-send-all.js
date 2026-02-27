@@ -109,6 +109,8 @@ export default async function handler(req, res) {
     image_prompt,
     image_size = '1024x1024',
     deliver = 'whatsapp',
+    bg_color = 'pink',
+    message = null,
   } = req.body ?? {};
 
   if (!image_url) return res.status(400).json({ error: 'image_url is required' });
@@ -122,6 +124,11 @@ export default async function handler(req, res) {
   const validDelivers = ['whatsapp', 'link', 'both'];
   if (!validDelivers.includes(deliver)) {
     return res.status(400).json({ error: `deliver must be one of: ${validDelivers.join(', ')}` });
+  }
+
+  const validColors = ['pink', 'black', 'blue', 'red'];
+  if (!validColors.includes(bg_color)) {
+    return res.status(400).json({ error: `bg_color must be one of: ${validColors.join(', ')}` });
   }
 
   const sendViaWhatsApp = deliver === 'whatsapp' || deliver === 'both';
@@ -270,6 +277,8 @@ export default async function handler(req, res) {
     const metadata = {
       id,
       created_at: new Date().toISOString(),
+      bg_color,
+      ...(message && { message }),
       ...(musicData && { music: { url: musicData.blobUrl, prompt: musicData.prompt, fileName: musicData.fileName } }),
       ...(imageData && { image: { url: imageData.blobUrl, prompt: imageData.prompt, fileName: imageData.fileName } }),
     };
