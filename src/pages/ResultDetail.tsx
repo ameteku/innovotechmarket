@@ -141,8 +141,7 @@ const ResultDetail = () => {
               alt="Birthday image"
               className="w-full object-cover"
             />
-            <div className="p-4 flex items-center justify-between gap-4">
-              <p className={`text-sm ${styles.subtext} truncate`}>🎨 {result.image.prompt}</p>
+            <div className="p-4 flex justify-end">
               <button
                 onClick={() => handleDownload(result.image!.url, result.image!.fileName)}
                 className={`shrink-0 flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${styles.btn}`}
@@ -164,8 +163,7 @@ const ResultDetail = () => {
               className="w-full"
               preload="metadata"
             />
-            <div className="flex items-center justify-between gap-4">
-              <p className={`text-sm ${styles.subtext} truncate`}>{result.music.prompt}</p>
+            <div className="flex justify-end">
               <button
                 onClick={() => handleDownload(result.music!.url, result.music!.fileName)}
                 className={`shrink-0 flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors ${styles.btn}`}
