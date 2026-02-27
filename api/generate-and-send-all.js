@@ -195,7 +195,7 @@ export default async function handler(req, res) {
     const blob = await put(fileName, generatedBuffer, { access: 'public', contentType: 'image/png', addRandomSuffix: true });
     console.log(`[image] Uploaded. Sending to WhatsApp...`);
 
-    const green = await sendToWhatsApp(blob.url, fileName, `🎨 ${image_prompt}`);
+    const green = await sendToWhatsApp(blob.url, fileName, '');
     setTimeout(() => del(blob.url).catch(() => {}), 60000);
 
     console.log(`[image] Sent! messageId=${green.idMessage}`);
