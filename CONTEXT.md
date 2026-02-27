@@ -2,7 +2,7 @@
 
 ## Overview
 
-A React/Vite web app (marketplace) with a Vercel serverless API that generates AI music via ElevenLabs and sends it to a WhatsApp group via Green API.
+A React/Vite web app (marketplace) with a Vercel serverless API that generates AI music (ElevenLabs) and AI images (OpenAI gpt-image-1) and sends them to a WhatsApp group via Green API.
 
 ---
 
@@ -14,13 +14,20 @@ Frontend (React + Vite + Shadcn UI)
     └── Deployed to Vercel (static site)
 
 Backend (Vercel Serverless Functions)
-    └── api/generate-and-send.js
-            │
+    ├── api/generate-and-send.js          (music)
+    │       ├── 1. Verifies API key via Unkey
+    │       ├── 2. Generates music via ElevenLabs SDK
+    │       ├── 3. Uploads audio to Vercel Blob (temp public URL)
+    │       ├── 4. Sends to WhatsApp group via Green API sendFileByUrl
+    │       └── 5. Deletes blob after 60s (Green API fetches async)
+    │
+    └── api/generate-and-send-image.js    (image)
             ├── 1. Verifies API key via Unkey
-            ├── 2. Generates music via ElevenLabs SDK
-            ├── 3. Uploads audio to Vercel Blob (temp public URL)
-            ├── 4. Sends to WhatsApp group via Green API sendFileByUrl
-            └── 5. Deletes blob after 60s (Green API fetches async)
+            ├── 2. Fetches source image from caller-provided URL
+            ├── 3. Edits image with OpenAI gpt-image-1
+            ├── 4. Uploads PNG to Vercel Blob (temp public URL)
+            ├── 5. Sends to WhatsApp group via Green API sendFileByUrl
+            └── 6. Deletes blob after 60s
 ```
 
 ---
@@ -66,6 +73,43 @@ GET /api/generate-and-send
 
 ---
 
+## API: `POST /api/generate-and-send-image`
+
+### Auth
+Same as above — `Authorization: Bearer <unkey-api-key>`
+
+### Request Body (JSON)
+```json
+{
+  "image_url": "https://example.com/photo.jpg",
+  "prompt": "Make it look like a cyberpunk city at night",
+  "size": "1024x1024"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `image_url` | string | yes | Publicly accessible URL of the source image |
+| `prompt` | string | yes | Edit instructions / style description |
+| `size` | string | no | `"1024x1024"` (default), `"1536x1024"`, or `"1024x1536"` |
+
+### Response
+```json
+{
+  "success": true,
+  "message": "Image generated and sent to WhatsApp group",
+  "messageId": "BAE5...",
+  "fileName": "image_1234567890.png"
+}
+```
+
+### Health Check
+```
+GET /api/generate-and-send-image
+```
+
+---
+
 ## Lyrics Mode vs Instrumental Mode
 
 - **No `lyrics` param** → `{ prompt, musicLengthMs }` → ElevenLabs generates instrumental
@@ -93,6 +137,7 @@ Set in Vercel Project Settings → Environment Variables (or `.env.local` for lo
 | `UNKEY_API_ID` | [app.unkey.com](https://app.unkey.com) → APIs → your API → copy `apiId` |
 | `UNKEY_ROOT_KEY` | Unkey → Settings → Root Keys → create with `verify_key` permission |
 | `BLOB_READ_WRITE_TOKEN` | Auto-set by Vercel when you link a Blob store (`vercel blob store add`) |
+| `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) (for image endpoint) |
 
 > **Note:** All env vars are `.trim()`ed in code to handle trailing newlines from CLI input.
 
@@ -125,6 +170,7 @@ echo "your_value" | vercel env add GREEN_API_TOKEN production
 echo "your_value" | vercel env add GROUP_CHAT_ID production
 echo "your_value" | vercel env add UNKEY_API_ID production
 echo "your_value" | vercel env add UNKEY_ROOT_KEY production
+echo "your_value" | vercel env add OPENAI_API_KEY production
 
 # Create and link Vercel Blob store
 vercel blob store add
@@ -155,8 +201,16 @@ vercel --prod
 - Create client keys in Unkey dashboard under the configured API
 - v2 SDK usage: `new Unkey({ rootKey }).keys.verifyKey({ key, apiId })`
 
+### OpenAI
+- SDK: `openai` (v4)
+- API used: `openai.images.edit()` with model `gpt-image-1`
+- Input image is fetched from caller-provided URL and passed via `toFile()`
+- Returns `b64_json` — decoded to Buffer and uploaded to Vercel Blob
+- Requires an active OpenAI account with gpt-image-1 access
+
 ### Vercel Blob
-- Temporary file hosting to bridge ElevenLabs audio → Green API
+- Temporary file hosting to bridge generated files → Green API
+- Used for both audio (music endpoint) and images (image endpoint)
 - Files are deleted 60 seconds after Green API acknowledges receipt
 
 ---
@@ -169,6 +223,7 @@ vercel --prod
 4. **`.trim()` all env vars** — `echo "value" | vercel env add` adds trailing newlines
 5. **Unkey v2 requires `rootKey`** — unlike v1, server-side key verification needs a root key, not just the API ID
 6. **`maxDuration: 300` required** — default 10s Vercel timeout is too short for music generation
+7. **OpenAI image edit returns `b64_json`** — gpt-image-1 doesn't support `response_format: 'url'`; decode base64 to Buffer before uploading to Blob
 
 ---
 
@@ -186,6 +241,7 @@ For local API testing, set env vars in `.env.local` (copy from `.env.example`).
 
 ## Testing the API
 
+### Music
 ```bash
 curl -X POST https://innovotechmarket.vercel.app/api/generate-and-send \
   -H "Authorization: Bearer <your-unkey-key>" \
@@ -202,5 +258,17 @@ curl -X POST https://innovotechmarket.vercel.app/api/generate-and-send \
   -d '{
     "prompt": "Afrobeats with guitar",
     "lyrics": "We rise up together\nBuilding something new\nInnovotech market\nChanging the world for you"
+  }'
+```
+
+### Image
+```bash
+curl -X POST https://innovotechmarket.vercel.app/api/generate-and-send-image \
+  -H "Authorization: Bearer <your-unkey-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image_url": "https://example.com/photo.jpg",
+    "prompt": "Make it look like a vibrant African market at sunset",
+    "size": "1024x1024"
   }'
 ```
