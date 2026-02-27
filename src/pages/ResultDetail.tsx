@@ -244,7 +244,7 @@ const ResultDetail = () => {
             href="https://ammeterventures.com/labs"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: 'inherit', textDecoration: 'none' }}
+            style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}
           >
             ammeterLabs.com
           </a>
