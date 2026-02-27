@@ -41,7 +41,9 @@ async function toBuffer(data) {
  * Vercel Serverless Function
  *
  * GET  /api/generate-and-send-all  → health check
- * POST /api/generate-and-send-all  → generate music + image in parallel, send both to WhatsApp
+ * POST /api/generate-and-send-all  → fire off music + image pipelines independently,
+ *                                    each generates → uploads → sends to WhatsApp on its own.
+ *                                    One failing never blocks the other.
  *
  * Headers:
  *   Authorization: Bearer <unkey-api-key>
@@ -117,102 +119,108 @@ export default async function handler(req, res) {
 
   const greenApiUrl = `https://${String(CONFIG.GREEN_API_INSTANCE_ID).slice(0, 4)}.api.greenapi.com/waInstance${CONFIG.GREEN_API_INSTANCE_ID}/sendFileByUrl/${CONFIG.GREEN_API_TOKEN}`;
 
-  try {
-    // ── Step 1: Generate music and image IN PARALLEL ──
-    console.log(`[1/3] Generating music ("${music_prompt}") and image ("${image_prompt}") in parallel...`);
-
-    const [musicResult, imageResult] = await Promise.all([
-      // Music generation
-      (async () => {
-        const elevenlabs = new ElevenLabsClient({ apiKey: CONFIG.ELEVENLABS_API_KEY });
-        const composeParams = lyrics
-          ? {
-              compositionPlan: {
-                positiveGlobalStyles: [music_prompt, 'vocals', 'singing', 'male vocalist'],
-                negativeGlobalStyles: ['instrumental'],
-                sections: [{
-                  sectionName: 'verse',
-                  positiveLocalStyles: ['vocals', 'singing'],
-                  negativeLocalStyles: ['instrumental'],
-                  durationMs: music_length_ms,
-                  lines: lyrics.split('\n').map(l => l.trim()).filter(Boolean),
-                }],
-              },
-            }
-          : { prompt: music_prompt, musicLengthMs: music_length_ms };
-
-        const audioData = await elevenlabs.music.compose(composeParams);
-        const audioBuffer = await toBuffer(audioData);
-        const audioFileName = `song_${Date.now()}.mp3`;
-        console.log(`[music] Generated ${audioBuffer.length} bytes → "${audioFileName}"`);
-
-        const blob = await put(audioFileName, audioBuffer, { access: 'public', contentType: 'audio/mpeg', addRandomSuffix: true });
-        return { buffer: audioBuffer, blob, fileName: audioFileName };
-      })(),
-
-      // Image generation
-      (async () => {
-        const imageResponse = await fetch(image_url);
-        if (!imageResponse.ok) throw new Error(`Failed to fetch image: HTTP ${imageResponse.status}`);
-        const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-        console.log(`[image] Fetched ${imageBuffer.length} bytes. Editing with OpenAI...`);
-
-        const formData = new FormData();
-        formData.append('image', new Blob([imageBuffer], { type: 'image/png' }), 'source.png');
-        formData.append('model', 'gpt-image-1');
-        formData.append('prompt', image_prompt);
-        formData.append('n', '1');
-        formData.append('size', image_size);
-
-        const editRes = await fetch('https://api.openai.com/v1/images/edits', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${CONFIG.OPENAI_API_KEY}` },
-          body: formData,
-        });
-        const editJson = await editRes.json();
-        if (!editRes.ok) throw new Error(`OpenAI error ${editRes.status}: ${JSON.stringify(editJson.error ?? editJson)}`);
-
-        const generatedBuffer = Buffer.from(editJson.data[0].b64_json, 'base64');
-        const imageFileName = `image_${Date.now()}.png`;
-        console.log(`[image] Generated ${generatedBuffer.length} bytes → "${imageFileName}"`);
-
-        const blob = await put(imageFileName, generatedBuffer, { access: 'public', contentType: 'image/png', addRandomSuffix: true });
-        return { buffer: generatedBuffer, blob, fileName: imageFileName };
-      })(),
-    ]);
-
-    console.log(`[2/3] Both generated. Sending to WhatsApp...`);
-
-    // ── Step 2: Send image then audio to WhatsApp (sequential to avoid rate limits) ──
-    const sendFile = async (blobUrl, fileName, caption) => {
-      const r = await fetch(greenApiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: CONFIG.GROUP_CHAT_ID, urlFile: blobUrl, fileName, caption }),
-      });
-      if (!r.ok) throw new Error(`Green API ${r.status}: ${await r.text()}`);
-      return r.json();
-    };
-
-    const imageGreen = await sendFile(imageResult.blob.url, imageResult.fileName, `🎨 ${image_prompt}`);
-    const musicGreen = await sendFile(musicResult.blob.url, musicResult.fileName, `🎵 ${music_prompt}`);
-
-    // ── Step 3: Clean up blobs after delay ──
-    setTimeout(() => {
-      del(imageResult.blob.url).catch(() => {});
-      del(musicResult.blob.url).catch(() => {});
-    }, 60000);
-
-    console.log(`[3/3] Done! image messageId=${imageGreen.idMessage}, music messageId=${musicGreen.idMessage}`);
-
-    return res.json({
-      success: true,
-      message: 'Image and music generated and sent to WhatsApp group',
-      image: { messageId: imageGreen.idMessage, fileName: imageResult.fileName },
-      music: { messageId: musicGreen.idMessage, fileName: musicResult.fileName },
+  // Helper: send a file to WhatsApp
+  const sendToWhatsApp = async (blobUrl, fileName, caption) => {
+    const r = await fetch(greenApiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: CONFIG.GROUP_CHAT_ID, urlFile: blobUrl, fileName, caption }),
     });
-  } catch (err) {
-    console.error('[Error]', err.message);
-    return res.status(500).json({ success: false, error: err.message });
-  }
+    if (!r.ok) throw new Error(`Green API ${r.status}: ${await r.text()}`);
+    return r.json();
+  };
+
+  // ── Full music pipeline: generate → upload blob → send to WhatsApp ──
+  const musicPipeline = async () => {
+    const elevenlabs = new ElevenLabsClient({ apiKey: CONFIG.ELEVENLABS_API_KEY });
+    const composeParams = lyrics
+      ? {
+          compositionPlan: {
+            positiveGlobalStyles: [music_prompt, 'vocals', 'singing', 'male vocalist'],
+            negativeGlobalStyles: ['instrumental'],
+            sections: [{
+              sectionName: 'verse',
+              positiveLocalStyles: ['vocals', 'singing'],
+              negativeLocalStyles: ['instrumental'],
+              durationMs: music_length_ms,
+              lines: lyrics.split('\n').map(l => l.trim()).filter(Boolean),
+            }],
+          },
+        }
+      : { prompt: music_prompt, musicLengthMs: music_length_ms };
+
+    console.log(`[music] Generating...`);
+    const audioData = await elevenlabs.music.compose(composeParams);
+    const audioBuffer = await toBuffer(audioData);
+    const fileName = `song_${Date.now()}.mp3`;
+    console.log(`[music] Generated ${audioBuffer.length} bytes. Uploading...`);
+
+    const blob = await put(fileName, audioBuffer, { access: 'public', contentType: 'audio/mpeg', addRandomSuffix: true });
+    console.log(`[music] Uploaded. Sending to WhatsApp...`);
+
+    const green = await sendToWhatsApp(blob.url, fileName, `🎵 ${music_prompt}`);
+    setTimeout(() => del(blob.url).catch(() => {}), 60000);
+
+    console.log(`[music] Sent! messageId=${green.idMessage}`);
+    return { success: true, messageId: green.idMessage, fileName };
+  };
+
+  // ── Full image pipeline: fetch → edit → upload blob → send to WhatsApp ──
+  const imagePipeline = async () => {
+    console.log(`[image] Fetching source image...`);
+    const imageResponse = await fetch(image_url);
+    if (!imageResponse.ok) throw new Error(`Failed to fetch image: HTTP ${imageResponse.status}`);
+    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+    console.log(`[image] Fetched ${imageBuffer.length} bytes. Editing with OpenAI...`);
+
+    const formData = new FormData();
+    formData.append('image', new Blob([imageBuffer], { type: 'image/png' }), 'source.png');
+    formData.append('model', 'gpt-image-1');
+    formData.append('prompt', image_prompt);
+    formData.append('n', '1');
+    formData.append('size', image_size);
+
+    const editRes = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${CONFIG.OPENAI_API_KEY}` },
+      body: formData,
+    });
+    const editJson = await editRes.json();
+    if (!editRes.ok) throw new Error(`OpenAI error ${editRes.status}: ${JSON.stringify(editJson.error ?? editJson)}`);
+
+    const generatedBuffer = Buffer.from(editJson.data[0].b64_json, 'base64');
+    const fileName = `image_${Date.now()}.png`;
+    console.log(`[image] Generated ${generatedBuffer.length} bytes. Uploading...`);
+
+    const blob = await put(fileName, generatedBuffer, { access: 'public', contentType: 'image/png', addRandomSuffix: true });
+    console.log(`[image] Uploaded. Sending to WhatsApp...`);
+
+    const green = await sendToWhatsApp(blob.url, fileName, `🎨 ${image_prompt}`);
+    setTimeout(() => del(blob.url).catch(() => {}), 60000);
+
+    console.log(`[image] Sent! messageId=${green.idMessage}`);
+    return { success: true, messageId: green.idMessage, fileName };
+  };
+
+  // ── Fire both pipelines independently — neither waits on the other ──
+  const [musicOutcome, imageOutcome] = await Promise.allSettled([
+    musicPipeline(),
+    imagePipeline(),
+  ]);
+
+  const music = musicOutcome.status === 'fulfilled'
+    ? musicOutcome.value
+    : { success: false, error: musicOutcome.reason?.message ?? 'Unknown error' };
+
+  const image = imageOutcome.status === 'fulfilled'
+    ? imageOutcome.value
+    : { success: false, error: imageOutcome.reason?.message ?? 'Unknown error' };
+
+  const overallSuccess = music.success || image.success;
+
+  return res.status(overallSuccess ? 200 : 500).json({
+    success: overallSuccess,
+    music,
+    image,
+  });
 }
