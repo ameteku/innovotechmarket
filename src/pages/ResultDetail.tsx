@@ -133,8 +133,8 @@ const ResultDetail = () => {
   if (loading) return (
     <>
       <style>{GLOBAL_CSS}</style>
-      <div style={{ minHeight: '100vh', background: themes.pink.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.7)' }} className="animate-spin" />
+      <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 style={{ width: 32, height: 32, color: 'rgba(255,255,255,0.4)' }} className="animate-spin" />
       </div>
     </>
   );
@@ -142,7 +142,7 @@ const ResultDetail = () => {
   if (error) return (
     <>
       <style>{GLOBAL_CSS}</style>
-      <div style={{ minHeight: '100vh', background: themes.pink.gradient, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', background: '#09090b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'white', fontSize: 20, fontWeight: 700 }}>{error}</p>
       </div>
     </>
